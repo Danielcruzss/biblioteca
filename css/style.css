@@ -1,0 +1,360 @@
+<?php
+
+require_once "auth.php";
+
+requerAdmin();
+
+$mensagem = "";
+$erro = "";
+
+/*
+|--------------------------------------------------------------------------
+| ALTERAR TIPO DE USUÁRIO
+|--------------------------------------------------------------------------
+*/
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["alterar_tipo"])) {
+
+    $id = (int) $_POST["id"];
+    $tipo = $_POST["tipo"];
+
+    if ($id == usuarioAtual()["id"]) {
+
+        $erro = "Você não pode alterar seu próprio tipo de usuário.";
+
+    } else {
+
+        $sql = $pdo->prepare("
+            UPDATE usuarios
+            SET tipo = ?
+            WHERE id = ?
+        ");
+
+        $sql->execute([
+            $tipo,
+            $id
+        ]);
+
+        $mensagem = "Tipo de usuário atualizado.";
+
+    }
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| EXCLUIR USUÁRIO
+|--------------------------------------------------------------------------
+*/
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["excluir"])) {
+
+    $id = (int) $_POST["id"];
+
+    if ($id == usuarioAtual()["id"]) {
+
+        $erro = "Você não pode excluir sua própria conta.";
+
+    } else {
+
+        $sql = $pdo->prepare("
+            DELETE
+            FROM usuarios
+            WHERE id = ?
+        ");
+
+        $sql->execute([$id]);
+
+        $mensagem = "Usuário excluído com sucesso.";
+
+    }
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| PESQUISA
+|--------------------------------------------------------------------------
+*/
+
+$pesquisa = "";
+
+if (isset($_GET["pesquisa"])) {
+
+    $pesquisa = trim($_GET["pesquisa"]);
+
+}
+
+if ($pesquisa != "") {
+
+    $like = "%".$pesquisa."%";
+
+    $sql = $pdo->prepare("
+        SELECT *
+        FROM usuarios
+        WHERE
+            nome LIKE ?
+            OR email LIKE ?
+        ORDER BY nome
+    ");
+
+    $sql->execute([
+        $like,
+        $like
+    ]);
+
+    $usuarios = $sql->fetchAll();
+
+} else {
+
+    $usuarios = $pdo->query("
+        SELECT *
+        FROM usuarios
+        ORDER BY nome
+    ")->fetchAll();
+
+}
+
+include "menu.php";
+
+?>
+
+<div class="container">
+
+<h1>Gerenciar Usuários</h1>
+
+<?php if($mensagem): ?>
+
+<div class="sucesso">
+
+<?= htmlspecialchars($mensagem) ?>
+
+</div>
+
+<?php endif; ?>
+
+<?php if($erro): ?>
+
+<div class="erro">
+
+<?= htmlspecialchars($erro) ?>
+
+</div>
+
+<?php endif; ?>
+
+<form method="GET">
+
+<input
+type="text"
+name="pesquisa"
+placeholder="Pesquisar usuário..."
+
+value="<?= htmlspecialchars($pesquisa) ?>">
+
+<button class="btn btn-primary">
+
+Pesquisar
+
+</button>
+
+</form>
+
+<br>
+
+<table>
+
+<tr>
+
+<th>ID</th>
+
+<th>Nome</th>
+
+<th>Email</th>
+
+<th>Tipo</th>
+
+<th>Ações</th>
+
+</tr>
+
+<?php foreach ($usuarios as $usuario): ?>
+
+<tr>
+
+    <td><?= $usuario["id"] ?></td>
+
+    <td><?= htmlspecialchars($usuario["nome"]) ?></td>
+
+    <td><?= htmlspecialchars($usuario["email"]) ?></td>
+
+    <td>
+
+        <?php if ($usuario["tipo"] == "admin"): ?>
+
+            <span class="tag tag-warning">Administrador</span>
+
+        <?php else: ?>
+
+            <span class="tag tag-info">Usuário</span>
+
+        <?php endif; ?>
+
+    </td>
+
+    <td>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+
+            <?php if ($usuario["id"] != usuarioAtual()["id"]): ?>
+
+                <form method="POST">
+
+                    <input
+                        type="hidden"
+                        name="id"
+                        value="<?= $usuario["id"] ?>">
+
+                    <input
+                        type="hidden"
+                        name="tipo"
+                        value="<?= $usuario["tipo"] == "admin" ? "usuario" : "admin" ?>">
+
+                    <button
+                        type="submit"
+                        name="alterar_tipo"
+                        class="btn btn-warning">
+
+                        <?= $usuario["tipo"] == "admin"
+                            ? "Remover Admin"
+                            : "Tornar Admin" ?>
+
+                    </button>
+
+                </form>
+
+                <form
+                    method="POST"
+                    onsubmit="return confirm('Deseja excluir este usuário?');">
+
+                    <input
+                        type="hidden"
+                        name="id"
+                        value="<?= $usuario["id"] ?>">
+
+                    <button
+                        type="submit"
+                        name="excluir"
+                        class="btn btn-danger">
+
+                        Excluir
+
+                    </button>
+
+                </form>
+
+            <?php else: ?>
+
+                <span style="color:#666;font-size:13px;">
+                    Sua conta
+                </span>
+
+            <?php endif; ?>
+
+        </div>
+
+    </td>
+
+</tr>
+
+<?php endforeach; ?>
+
+</table>
+
+<br>
+
+<div class="stats-grid">
+
+    <div class="stat-card">
+
+        <div class="stat-info">
+
+            <div class="stat-num">
+
+                <?= count($usuarios) ?>
+
+            </div>
+
+            <div class="stat-label">
+
+                Usuários cadastrados
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="stat-card">
+
+        <div class="stat-info">
+
+            <div class="stat-num">
+
+                <?php
+
+                $admins = 0;
+
+                foreach ($usuarios as $u) {
+
+                    if ($u["tipo"] == "admin") {
+
+                        $admins++;
+
+                    }
+
+                }
+
+                echo $admins;
+
+                ?>
+
+            </div>
+
+            <div class="stat-label">
+
+                Administradores
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="stat-card">
+
+        <div class="stat-info">
+
+            <div class="stat-num">
+
+                <?= count($usuarios) - $admins ?>
+
+            </div>
+
+            <div class="stat-label">
+
+                Usuários comuns
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+</div>
+
+</body>
+
+</html>
