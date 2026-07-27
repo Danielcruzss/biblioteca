@@ -300,7 +300,7 @@ value="<?= $item["livro_id"] ?>">
 <button
 class="btn btn-success"
 type="submit"
-name="devolver">
+name="devolve">
 
 Devolver
 
