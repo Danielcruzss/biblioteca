@@ -9,87 +9,57 @@ $usuario = usuarioAtual();
 $mensagem = "";
 $erro = "";
 
-/*
-|--------------------------------------------------------------------------
-| EMPRESTAR LIVRO
-|--------------------------------------------------------------------------
-*/
+// EMPRESTAR LIVRO
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["emprestar"])) {
 
     $livro_id = (int)$_POST["livro_id"];
 
-    $sql = $pdo->prepare("
-        SELECT *
-        FROM livros
-        WHERE id=?
-    ");
+    try {
+        $sql = $pdo->prepare("SELECT * FROM livros WHERE id=?");
+        $sql->execute([$livro_id]);
+        $livro = $sql->fetch();
 
-    $sql->execute([$livro_id]);
-
-    $livro = $sql->fetch();
-
-    if (!$livro) {
-
-        $erro = "Livro não encontrado.";
-
-    } elseif ($livro["disponivel"] <= 0) {
-
-        $erro = "Livro indisponível.";
-
-    } else {
-
-        $verifica = $pdo->prepare("
-            SELECT id
-            FROM emprestimos
-            WHERE usuario_id=?
-            AND livro_id=?
-            AND status='emprestado'
-        ");
-
-        $verifica->execute([
-            $usuario["id"],
-            $livro_id
-        ]);
-
-        if ($verifica->fetch()) {
-
-            $erro = "Você já possui este livro emprestado.";
-
+        if (!$livro) {
+            $erro = "Livro não encontrado.";
+        } elseif ($livro["disponivel"] <= 0) {
+            $erro = "Livro indisponível.";
         } else {
-
-            $insert = $pdo->prepare("
-                INSERT INTO emprestimos
-                (
-                    usuario_id,
-                    livro_id
-                )
-                VALUES
-                (
-                    ?,
-                    ?
-                )
+            
+            // Verifica se já tem o livro
+            $verifica = $pdo->prepare("
+                SELECT id 
+                FROM emprestimos 
+                WHERE usuario_id=? AND livro_id=? AND status='emprestado'
             ");
+            $verifica->execute([$usuario["id"], $livro_id]);
 
-            $insert->execute([
-                $usuario["id"],
-                $livro_id
-            ]);
+            if ($verifica->fetch()) {
+                $erro = "Você já possui este livro emprestado.";
+            } else {
+                
+                // INSERE O EMPRÉSTIMO (Adicionando status e data_emprestimo por segurança)
+                $insert = $pdo->prepare("
+                    INSERT INTO emprestimos (usuario_id, livro_id, status, data_emprestimo)
+                    VALUES (?, ?, 'emprestado', NOW())
+                ");
+                $insert->execute([$usuario["id"], $livro_id]);
 
-            $update = $pdo->prepare("
-                UPDATE livros
-                SET disponivel=disponivel-1
-                WHERE id=?
-            ");
+                // ATUALIZA O ESTOQUE
+                $update = $pdo->prepare("
+                    UPDATE livros
+                    SET disponivel=disponivel-1
+                    WHERE id=?
+                ");
+                $update->execute([$livro_id]);
 
-            $update->execute([$livro_id]);
-
-            $mensagem = "Livro emprestado com sucesso.";
-
+                $mensagem = "Livro emprestado com sucesso!";
+            }
         }
-
+    } catch (PDOException $e) {
+        // Se o banco de dados recusar, ele mostra exatamente o porquê na tela!
+        $erro = "Erro no banco de dados: " . $e->getMessage();
     }
-
 }
 
 /*
@@ -138,7 +108,7 @@ if($pesquisa!=""){
 
 }
 
-include "menu.php";
+include "includes/menu.php";
 
 ?>
 
@@ -210,16 +180,13 @@ Pesquisar
 
 <div class="book-cover">
 
-<div class="book-cover-placeholder">
-
-📚
-
-<span>
-
-Sem capa
-
-</span>
-
+<div class="book-cover-image">
+    <?php if($livro["capa"]): ?>
+        <img src="uploads/capas/<?= htmlspecialchars($livro["capa"]) ?>" alt="Capa">
+    <?php else: ?>
+        <div class="book-cover-placeholder">📚 <span>Sem capa</span></div>
+    <?php endif; ?>
+    
 </div>
 
 <?php if($livro["disponivel"]>0): ?>
@@ -264,7 +231,9 @@ Indisponível
 
 <div class="book-exemplares">
 
-Disponíveis:
+<strong>Disponíveis:</strong>
+<?= $livro["disponivel"] ?>
+
 
 <?php if($livro["disponivel"] > 0): ?>
 

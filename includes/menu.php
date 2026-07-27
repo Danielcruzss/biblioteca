@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/../auth.php';
 
-// Detecta se estamos dentro da pasta admin
+
 $base = (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../' : '';
 
 $usuario = usuarioAtual();

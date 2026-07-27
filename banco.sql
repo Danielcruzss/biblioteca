@@ -24,6 +24,7 @@ CREATE TABLE livros (
     categoria VARCHAR(80),
     quantidade INT DEFAULT 1,
     disponivel INT DEFAULT 1,
+    capa VARCHAR(255) NULL, -- COLUNA ADICIONADA AQUI!
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -49,7 +50,6 @@ CREATE TABLE emprestimos (
 -- Administrador padrão
 -- senha: admin123
 -- ==========================
-
 INSERT INTO usuarios
 (nome, matricula, email, senha, tipo)
 VALUES
@@ -61,14 +61,12 @@ VALUES
 'admin'
 );
 
--- ==========================
 -- Livros de exemplo
--- ==========================
 
 INSERT INTO livros
-(titulo,autor,categoria,quantidade,disponivel)
+(titulo,autor,categoria,quantidade,disponivel,capa)
 VALUES
-('Dom Casmurro','Machado de Assis','Romance',5,5),
-('O Pequeno Príncipe','Antoine de Saint-Exupéry','Infantil',3,3),
-('1984','George Orwell','Ficção',4,4),
-('Clean Code','Robert C. Martin','Tecnologia',2,2);
+('Dom Casmurro','Machado de Assis','Romance',5,5,NULL),
+('O Pequeno Príncipe','Antoine de Saint-Exupéry','Infantil',3,3,NULL),
+('1984','George Orwell','Ficção',4,4,NULL),
+('Clean Code','Robert C. Martin','Tecnologia',2,2,NULL);

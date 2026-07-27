@@ -6,7 +6,7 @@ requerLogin();
 
 $usuario = usuarioAtual();
 
-include "menu.php";
+include "includes/menu.php";
 
 /*
 |--------------------------------------------------------------------------
